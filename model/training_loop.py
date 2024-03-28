@@ -3,6 +3,7 @@ from torch import optim
 from torch import nn
 import torchvision.transforms.functional as TF
 import tqdm
+import os
 
 from utils import transforms
 from . import network
@@ -20,7 +21,7 @@ beta1 = 0.5
 optimizer_G = optim.Adam(generator.parameters(), lr=lr, betas=(beta1, 0.999))
 optimizer_D = optim.Adam(discriminator.parameters(), lr=lr, betas=(beta1, 0.999))
 
-def train(dataloader, resume, epochs, snapshot):
+def train(dataloader, resume, epochs, interval):
     if resume:
         checkpoint = torch.load(resume)
         generator.load_state_dict(checkpoint['generator'])
@@ -34,6 +35,7 @@ def train(dataloader, resume, epochs, snapshot):
     print('Training batch size:', dataloader.batch_size)
 
     # Generate sample images and record the initial model state
+    os.makedirs('snapshot/checkpoint', exist_ok=True)
     generator_state = generator.state_dict()
     discriminator_state = discriminator.state_dict()
 
