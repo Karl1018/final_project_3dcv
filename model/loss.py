@@ -3,7 +3,7 @@ from torch import nn
 
 # Initialize loss functions
 criterionGAN = nn.BCELoss()  # Adversarial loss for both generator and discriminator
-criterionL1 = nn.L1Loss()    # Content loss (L1 loss)
+criterionL1 = nn.SmoothL1Loss()    # Content loss (smooth L1 loss)
 
 # Adversarial loss for the discriminator
 def discriminator_loss(discriminator, real_images, fake_images):
