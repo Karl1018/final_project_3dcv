@@ -94,7 +94,7 @@ def train(dataloader, resume, epochs, interval):
             with open('snapshot/log.txt', 'w') as f:
                 f.write(content)
             
-        if epoch % snapshot == 0:
+        if epoch % interval == 0:
             generator_state = generator.state_dict()
             discriminator_state = discriminator.state_dict()
 
