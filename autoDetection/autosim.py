@@ -328,8 +328,8 @@ class GroupingStrategy(object):
         FM = np.zeros(data_len*NFM, dtype = ctypes.c_float)
         self.libAS.GetMatches(g, FM.ctypes.data_as(floatp), ctypes.c_bool(Interior), ctypes.c_bool(trueKP))                        
 
-        ptlist = [[np.complex(real = float(FM[data_len*i]), imag = float(FM[data_len*i+1])),
-                   np.complex(real = float(FM[data_len*i+2]), imag = float(FM[data_len*i+3]))
+        ptlist = [[complex(real = float(FM[data_len*i]), imag = float(FM[data_len*i+1])),
+                   complex(real = float(FM[data_len*i+2]), imag = float(FM[data_len*i+3]))
                     ]  for i in range(NFM)]
         
         kplist = [[cv2.KeyPoint(x = float(FM[data_len*i]), y = float(FM[data_len*i+1]),
@@ -384,16 +384,16 @@ class GroupingStrategy(object):
         FM = np.zeros(data_len*NFM, dtype = ctypes.c_float)
         self.libAS.GetMatches(g, FM.ctypes.data_as(floatp), ctypes.c_bool(Interior), ctypes.c_bool(trueKP))                        
         
-        ptlist = [[np.complex(real = float(FM[data_len*i]), imag = float(FM[data_len*i+1])),
-                np.complex(real = float(FM[data_len*i+2]), imag = float(FM[data_len*i+3]))
+        ptlist = [[complex(real = float(FM[data_len*i]), imag = float(FM[data_len*i+1])),
+                complex(real = float(FM[data_len*i+2]), imag = float(FM[data_len*i+3]))
                     ]  for i in range(NFM)]
         
         kplist = [[cv2.KeyPoint(x = float(FM[data_len*i]), y = float(FM[data_len*i+1]),
-                    _size = 6.0, _angle = 0.0, _response = 0.9,
-                    _octave = packSIFTOctave(-1,0), _class_id = 0),
+                    size = 6.0, angle = 0.0, response = 0.9,
+                    octave = packSIFTOctave(-1,0), class_id = 0),
                     cv2.KeyPoint(x = float(FM[data_len*i+2]), y = float(FM[data_len*i+3]),
-                    _size = 6.0, _angle = 0.0, _response = 0.9,
-                    _octave = packSIFTOctave(-1,0), _class_id = 0)
+                    size = 6.0, angle = 0.0, response = 0.9,
+                    octave = packSIFTOctave(-1,0), class_id = 0)
                     ]  for i in range(NFM)]
         kplist = functools.reduce(operator.iconcat, kplist, [])
         ptlist = functools.reduce(operator.iconcat, ptlist, [])

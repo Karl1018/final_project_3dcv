@@ -224,7 +224,7 @@ def HomographyFit(X0, Y0=[], Aff=[]):
         else:
             Yi = np.array( [[Y0[i][0], Y0[i][1]]  for i in range(n)] ) 
 
-    A = np.zeros((eqN*n,9),dtype=np.float)
+    A = np.zeros((eqN*n,9),dtype=float)
     for i in range(n):
         # Coordinates constraints
         j = eqN*i
@@ -286,10 +286,10 @@ def Look4Inliers(dataransac, Xi, Yi_list, H_list, Affnetdecomp=[],  thres = inli
         affdiffthres = np.array( [thres['lambda'], thres['phi'], thres['tilt'], thres['psi']] )
         AvDist = 0
         Hinv_list = [ np.linalg.inv(H) for H in H_list ]
-        vec1, vec2 = np.zeros(shape=(4,1),dtype=np.float), np.zeros(shape=(4,1),dtype=np.float)
+        vec1, vec2 = np.zeros(shape=(4,1),dtype=float), np.zeros(shape=(4,1),dtype=float)
         
         for i in range(len(Xi)): # number of matches
-            thisdist = np.zeros(dataransac.n_clusters-1,dtype=np.float)
+            thisdist = np.zeros(dataransac.n_clusters-1,dtype=float)
             x = Xi[i]
             x = np.array(x).reshape(3,1)
             for cc in range(dataransac.n_clusters-1):
@@ -374,7 +374,7 @@ def RepAff_RANSAC_H(dataransac, img, Niter= 1000, AffInfo = 0, thres = inlier_th
     NFA = NFAclass(h*w, len(dataransac.ros), Nsample=Ns)
 
     for _ in range(Niter):
-        m = -1*np.ones(Ns,np.int)
+        m = -1*np.ones(Ns,int)
         for j in range(Ns):
             m1 = np.random.randint(0,len(cvkeys1))
             while m1 in m:
@@ -453,7 +453,7 @@ def Aff_RANSAC_H(img1, cvkeys1, img2, cvkeys2, cvMatches, pxl_radius = 20, Niter
     
     Ns = 2 if AffInfo>0 else 4
     for _ in range(Niter):
-        m = -1*np.ones(Ns,np.int)
+        m = -1*np.ones(Ns,int)
         for j in range(Ns):
             m1 = np.random.randint(0,len(cvMatches))
             while m1 in m:

@@ -651,9 +651,9 @@ def FindBestKPinLists(lambda1,lambda2, kp_list1, kp_list2):
 
 def features_deepcopy(f):
     return [cv2.KeyPoint(x = k.pt[0], y = k.pt[1],
-            _size = k.size, _angle = k.angle,
-            _response = k.response, _octave = k.octave,
-            _class_id = k.class_id) for k in f]
+            size = k.size, angle = k.angle,
+            response = k.response, octave = k.octave,
+            class_id = k.class_id) for k in f]
 
 def matches_deepcopy(f):
     return [cv2.DMatch(_queryIdx=k.queryIdx, _trainIdx=k.trainIdx, _distance=k.distance) for k in f]
