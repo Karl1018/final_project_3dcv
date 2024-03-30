@@ -13,7 +13,8 @@
 #include <sstream>
 #include <fstream>
 #include <iostream>
-#include </opt/homebrew/Cellar/libomp/18.1.1/include/omp.h>
+### should be user defined ###
+#include </home/karl/miniconda3/envs/cv/include/omp.h>
 #include <list>
 #include <vector>
 #include <stdio.h>
