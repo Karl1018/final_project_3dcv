@@ -8,6 +8,7 @@ def main():
 
     # arg parser
     parser = argparse.ArgumentParser()
+    parser.add_argument('--aug', type=bool, default=False)
     parser.add_argument('--resume', type=str, default=None)
     parser.add_argument('--batch', type=int, default=32)
     parser.add_argument('--epochs', type=int, default=20)
@@ -16,10 +17,12 @@ def main():
     args = parser.parse_args()
 
     if args.ts == 'public':
-        dataloader = dataset_utils.make_public_dataloader(batch_size=args.batch)
+        dataloader = dataset_utils.make_public_dataloader(batch_size=args.batch, aug=args.aug)
+
+    
     else:
         try:
-            dataloader = dataset_utils.make_custom_dataloader(path=args.ts, batch_size=args.batch)
+            dataloader = dataset_utils.make_custom_dataloader(path=args.ts, batch_size=args.batch, aug=args.aug)
         except FileNotFoundError:
             print('Invalid training set path')
             exit(1)
