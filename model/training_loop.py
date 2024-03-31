@@ -4,6 +4,7 @@ from torch import nn
 import torchvision.transforms.functional as TF
 import tqdm
 import os
+import time
 
 from utils import transforms
 from . import network
@@ -30,7 +31,11 @@ optimizer_D = optim.Adam(discriminator.parameters(), lr=lr, betas=(beta1, 0.999)
 
 def train(dataloader, resume, epochs, interval):
     if resume:
-        checkpoint = torch.load(resume)
+        try:
+            checkpoint = torch.load(resume)
+        except FileNotFoundError:
+            print('Invalid checkpoint path')
+            exit(1)
         generator.load_state_dict(checkpoint['generator'])
         discriminator.load_state_dict(checkpoint['discriminator'])
         print(f'Resuming training from {resume}')
@@ -62,7 +67,7 @@ def train(dataloader, resume, epochs, interval):
     TF.to_pil_image(real_image.cpu()[0]).save(f'snapshot/real_0.png')
     TF.to_pil_image(grayscale_image.cpu()[0]).save(f'snapshot/grayscale_0.png')
 
-
+    start_time = time.time()
 
     for epoch in range(epochs):
         dataloader = tqdm.tqdm(dataloader)
@@ -87,24 +92,25 @@ def train(dataloader, resume, epochs, interval):
             loss_G.backward()
             optimizer_G.step()
             
-        # Logging
-        if epoch % 1 == 0:
-            content = f'Epoch [{epoch+1}/{epochs}], 'f'Loss_D: {loss_D.item()}, Loss_G: {loss_G.item()}'
-            print(content)
-            with open('snapshot/log.txt', 'w') as f:
-                f.write(content)
-            
-        if epoch % interval == 0:
-            generator_state = generator.state_dict()
-            discriminator_state = discriminator.state_dict()
+            # Logging
+            if i % interval == 0:
+                t = time.time() - start_time
+                content = f'Time: {t//3600}h {t%3600//60}m, ' f'Epoch [{epoch+1}/{epochs}], 'f'Loss_D: {loss_D.item()}, Loss_G: {loss_G.item()}'
+                print(content)
+                with open('snapshot/log.txt', 'w') as f:
+                    f.write(content)
+                
+            if i % interval == 0:
+                generator_state = generator.state_dict()
+                discriminator_state = discriminator.state_dict()
 
-            models_state_dict = {
-                'generator': generator_state,
-                'discriminator': discriminator_state
-            }
+                models_state_dict = {
+                    'generator': generator_state,
+                    'discriminator': discriminator_state
+                }
 
-            torch.save(models_state_dict, f'snapshot/checkpoint/checkpoint_{epoch}.pth')
-            # Save generated images
-            TF.to_pil_image(fake_images[0].cpu()).save(f'snapshot/generated_{epoch}.png')
-            TF.to_pil_image(real_images[0].cpu()).save(f'snapshot/real_{epoch}.png')
-            TF.to_pil_image(grayscale_images[0].cpu()).save(f'snapshot/grayscale_{epoch}.png')
+                torch.save(models_state_dict, f'snapshot/checkpoint/checkpoint_{epoch}.pth')
+                # Save generated images
+                TF.to_pil_image(fake_images[0].cpu()).save(f'snapshot/generated_{epoch}.png')
+                TF.to_pil_image(real_images[0].cpu()).save(f'snapshot/real_{epoch}.png')
+                TF.to_pil_image(grayscale_images[0].cpu()).save(f'snapshot/grayscale_{epoch}.png')
