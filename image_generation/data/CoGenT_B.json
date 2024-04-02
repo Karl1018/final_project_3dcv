@@ -1,11 +1,12 @@
 {
   "cube": [
-    "gray"
+    "brown"
   ],
   "cylinder": [
-    "red"
+    "green"
   ],
   "sphere": [
-    "blue"
+    "yellow"
   ]
 }
+
