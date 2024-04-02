@@ -3,12 +3,18 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-def _downsampling_block(in_channels, out_channels):
-    return nn.Sequential(
-        nn.Conv2d(in_channels, out_channels, 4, 2, 1, bias=False),
+from utils.image_process import postprocess
+
+def _downsampling_block(in_channels, out_channels, dropout=False):
+    layers = [
+        nn.ConvTranspose2d(in_channels, out_channels, 4, 2, 1, bias=False),
         nn.BatchNorm2d(out_channels),
-        nn.LeakyReLU(0.2),
-    )
+        nn.ReLU()
+    ]
+    if dropout:
+        layers.append(nn.Dropout(0.5))
+
+    return nn.Sequential(*layers)
 
 def _upsampling_block(in_channels, out_channels):
     return nn.Sequential(
@@ -29,14 +35,15 @@ class Generator(nn.Module):
 
         # Decoder with skip connections
         self.up1 = _upsampling_block(512, 256)
-        self.up2 = _upsampling_block(256*2, 128)  # *2 due to skip connection
+        self.up2 = _upsampling_block(256*2, 128)
         self.up3 = _upsampling_block(128*2, 64)
         self.up4 = nn.Sequential(
             nn.ConvTranspose2d(64*2, 3, kernel_size=4, stride=2, padding=1),
             nn.Tanh(),
         )
 
-    def forward(self, x):
+    def forward(self, x, postprocess=False):
+        
         d1 = self.down1(x)
         d2 = self.down2(d1)
         d3 = self.down3(d2)
@@ -46,6 +53,9 @@ class Generator(nn.Module):
         u2 = self.up2(torch.cat([u1, d3], 1))
         u3 = self.up3(torch.cat([u2, d2], 1))
         u4 = self.up4(torch.cat([u3, d1], 1))
+
+        if postprocess:
+            u4 = postprocess(u4)
         return u4
 
 # Discriminator Model

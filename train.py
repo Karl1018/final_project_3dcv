@@ -1,6 +1,6 @@
 import argparse
 
-from model import training_loop
+from model.GAN import training_loop
 from utils import dataset_utils
 
 def main():
@@ -17,17 +17,17 @@ def main():
     args = parser.parse_args()
 
     if args.ts == 'public':
-        dataloader = dataset_utils.make_public_dataloader(batch_size=args.batch, aug=args.aug)
+        train_dataset, test_dataset = dataset_utils.make_public_dataloader(batch_size=args.batch, aug=args.aug)
 
     
     else:
         try:
-            dataloader = dataset_utils.make_custom_dataloader(path=args.ts, batch_size=args.batch, aug=args.aug)
+            train_dataset, test_dataset = dataset_utils.make_custom_dataloader(path=args.ts, batch_size=args.batch, aug=args.aug)
         except FileNotFoundError:
             print('Invalid training set path')
             exit(1)
 
-    training_loop.train(dataloader, resume=args.resume, epochs=args.epochs, interval=args.interval)
+    training_loop.train(train_dataset, test_dataset, resume=args.resume, epochs=args.epochs, interval=args.interval)
 
 
 if __name__ == '__main__':
