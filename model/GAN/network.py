@@ -5,16 +5,12 @@ import torch.nn.functional as F
 
 from utils.image_process import postprocess
 
-def _downsampling_block(in_channels, out_channels, dropout=False):
-    layers = [
-        nn.ConvTranspose2d(in_channels, out_channels, 4, 2, 1, bias=False),
+def _downsampling_block(in_channels, out_channels):
+    return nn.Sequential(
+        nn.Conv2d(in_channels, out_channels, 4, 2, 1, bias=False),
         nn.BatchNorm2d(out_channels),
-        nn.ReLU()
-    ]
-    if dropout:
-        layers.append(nn.Dropout(0.5))
-
-    return nn.Sequential(*layers)
+        nn.LeakyReLU(0.2),
+    )
 
 def _upsampling_block(in_channels, out_channels):
     return nn.Sequential(

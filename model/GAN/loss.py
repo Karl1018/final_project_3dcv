@@ -30,17 +30,19 @@ def generator_loss(discriminator, fake_images, real_images, lambda_L1=100.0, lam
     loss_L1 = criterionL1(fake_images, real_images)
 
     # Perceptual loss
-    loss_perceptual = PerceptualLoss(fake_images, real_images, device=fake_images.device)
+    criterionPerceptual = PerceptualLoss(device=fake_images.device)
+    loss_perceptual = criterionPerceptual(fake_images, real_images)
     
     # Total generator loss
     loss_G = loss_GAN + lambda_L1 * loss_L1 + lambda_perceptual * loss_perceptual
     return loss_G
 
 class PerceptualLoss(nn.Module):
-    def __init__(self):
+    def __init__(self, device):
         super(PerceptualLoss, self).__init__()
+        self.device = device
         # Load a pre-trained VGG-16 model and configure it for feature extraction
-        self.vgg = vgg16(pretrained=True).features
+        self.vgg = vgg16(pretrained=True).features.to(self.device).eval()
         # Freeze the model to prevent any further training or changes to the weights
         for param in self.vgg.parameters():
             param.requires_grad = False
@@ -58,6 +60,6 @@ class PerceptualLoss(nn.Module):
 
     def _preprocess(self, image):
         # Normalize using VGG's expected mean and std
-        mean = torch.tensor([0.485, 0.456, 0.406]).view(-1, 1, 1)
-        std = torch.tensor([0.229, 0.224, 0.225]).view(-1, 1, 1)
+        mean = torch.tensor([0.485, 0.456, 0.406], device=self.device).view(-1, 1, 1)
+        std = torch.tensor([0.229, 0.224, 0.225], device=self.device).view(-1, 1, 1)
         return (image - mean) / std
