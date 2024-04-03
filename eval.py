@@ -6,6 +6,19 @@ from skimage.metrics import structural_similarity as compare_ssim
 from torchvision import transforms
 from PIL import Image
 
+def load_model(model_path):
+    try:
+        checkpoint = torch.load(model_path)
+    except FileNotFoundError:
+        print('Invalid checkpoint path')
+        exit(1)
+    # TODO: Change the model architecture
+    from model.GAN import network
+    generator = network.Generator()
+    discriminator = network.Discriminator()
+    generator.load_state_dict(checkpoint['generator'])
+    return generator
+
 def load_image(image_path, resize_to=(256, 256)):
     transform = transforms.Compose([
         transforms.Resize(resize_to),
