@@ -2,12 +2,15 @@ import torch
 from torch import optim
 from torch import nn
 import torchvision.transforms.functional as TF
-import tqdm
 import os
 import time
+import tqdm
+import random
+import numpy as np
 
 from . import network
 from . import loss
+from .config import *
 from utils.image_process import postprocess
 
 if torch.backends.mps.is_available():
@@ -17,13 +20,23 @@ elif torch.cuda.is_available():
 else:
     device = torch.device("cpu")
 
+def setup_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    if torch.backends.mps.is_available():
+        torch.manual_seed(seed)
+
+setup_seed(17)
 
 generator = network.Generator().to(device)
 discriminator = network.Discriminator().to(device)
 
 # Hyperparameters
-lr = 0.0002
-beta1 = 0.5
+lr = LR
+beta1 = BETA1
 
 # Optimizers
 optimizer_G = optim.Adam(generator.parameters(), lr=lr, betas=(beta1, 0.999))
