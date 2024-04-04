@@ -16,8 +16,8 @@ def make_public_dataloader(batch_size, num_workers=4, aug=False):
     else:
         train_dataset.dataset.transform = basic_transform
 
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     return train_dataloader, test_dataloader
 
 def make_custom_dataloader(path, batch_size, num_workers=4, aug=False):
@@ -26,7 +26,7 @@ def make_custom_dataloader(path, batch_size, num_workers=4, aug=False):
     
     train_size = int(0.8 * len(dataset))
     test_size = len(dataset) - train_size
-    train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
+    train_dataset, test_dataset = random_split(dataset, [train_size, test_size]).manual_seed(17)
     
     if aug:
         train_dataset.dataset.transform = aug_transform
@@ -34,7 +34,7 @@ def make_custom_dataloader(path, batch_size, num_workers=4, aug=False):
         train_dataset.dataset.transform = basic_transform
     test_dataset.dataset.transform = basic_transform
     
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     
     return train_dataloader, test_dataloader

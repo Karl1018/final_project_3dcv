@@ -1,12 +1,25 @@
 import argparse
+import random
+import numpy as np
+import torch
 
 import model.GAN as GAN
 import model.diffusion as diffusion
 import model.CNN as CNN
 from utils import dataset_utils
 
+def setup_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    if torch.backends.mps.is_available():
+        torch.manual_seed(seed)
+    
+
 def main():
-    # TODO: help message
+    setup_seed(17)
 
     # arg parser
     parser = argparse.ArgumentParser()

@@ -20,14 +20,7 @@ elif torch.cuda.is_available():
 else:
     device = torch.device("cpu")
 
-def setup_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
-    if torch.backends.mps.is_available():
-        torch.manual_seed(seed)
+
 
 setup_seed(17)
 
