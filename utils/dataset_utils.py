@@ -26,7 +26,7 @@ def make_custom_dataloader(path, batch_size, num_workers=4, aug=False):
     
     train_size = int(0.8 * len(dataset))
     test_size = len(dataset) - train_size
-    train_dataset, test_dataset = random_split(dataset, [train_size, test_size]).manual_seed(17)
+    train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
     
     if aug:
         train_dataset.dataset.transform = aug_transform
