@@ -3,9 +3,9 @@ import random
 import numpy as np
 import torch
 
-import model.GAN as GAN
-import model.diffusion as diffusion
-import model.CNN as CNN
+from model.GAN import training_loop as GAN
+from model.diffusion import training_loop as diffusion
+from model.CNN import training_loop as CNN
 from utils import dataset_utils
 
 def setup_seed(seed):
@@ -44,11 +44,11 @@ def main():
             exit(1)
     
     if args.model == 'GAN':
-        training_loop = GAN.training_loop
+        training_loop = GAN
     elif args.model == 'diffusion':
-        training_loop = diffusion.training_loop
+        training_loop = diffusion
     elif args.model == 'CNN':
-        training_loop = CNN.training_loop
+        training_loop = CNN
 
     training_loop.train(train_dataset, test_dataset, resume=args.resume, epochs=args.epochs, interval=args.interval)
 
