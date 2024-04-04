@@ -94,6 +94,8 @@ def train(train_dataloader, test_dataloader, resume, epochs, interval):
 
     for epoch in range(epochs):
         # Train
+        sum_loss_D = 0
+        sum_loss_G = 0
         train_dataloader = tqdm.tqdm(train_dataloader)
         for i, (images, _) in enumerate(train_dataloader):
             train_dataloader.set_description(f'Epoch [{epoch+1}/{epochs}]')
@@ -115,6 +117,9 @@ def train(train_dataloader, test_dataloader, resume, epochs, interval):
             loss_G = loss.generator_loss(discriminator, fake_images, real_images)
             loss_G.backward()
             optimizer_G.step()
+
+            sum_loss_D += loss_D.item()
+            sum_loss_G += loss_G.item()
             
             # Logging
             if i % interval == 0:
@@ -126,23 +131,36 @@ def train(train_dataloader, test_dataloader, resume, epochs, interval):
                 
             if i % interval == 0:
                 # Save generated images
-                TF.to_pil_image(postprocess(fake_images[0]).cpu()).save(f'snapshot/train/generated_{epoch}.png')
-                TF.to_pil_image(postprocess(real_images[0]).cpu()).save(f'snapshot/train/real_{epoch}.png')
-                TF.to_pil_image(postprocess(grayscale_images[0]).cpu()).save(f'snapshot/train/grayscale_{epoch}.png')
+                TF.to_pil_image(postprocess(fake_images[0]).cpu()).save(f'snapshot/train/generated_{epoch+1}.png')
+                TF.to_pil_image(postprocess(real_images[0]).cpu()).save(f'snapshot/train/real_{epoch+1}.png')
+                TF.to_pil_image(postprocess(grayscale_images[0]).cpu()).save(f'snapshot/train/grayscale_{epoch+1}.png')
 
+        loss_D = sum_loss_D / len(train_dataloader)
+        loss_G = sum_loss_G / len(train_dataloader)
+        content = f'Epoch [{epoch+1}/{epochs}] finished, 'f'Average Loss_D: {loss_D}, Average Loss_G: {loss_G}\n'
+        print(content)
+        with open('snapshot/log.txt', 'a') as f:
+            f.write(content + '\n')
         # Test
         test_dataloader = tqdm.tqdm(test_dataloader)
         for i, (images, _) in enumerate(test_dataloader):
             test_dataloader.set_description(f'Testing Epoch [{epoch+1}/{epochs}]')
             real_images = images.to(device)
             grayscale_images = TF.rgb_to_grayscale(real_images)
+            sum_loss_D = 0
+            sum_loss_G = 0
             with torch.no_grad():
                 fake_images = generator(grayscale_images)
                 loss_D = loss.discriminator_loss(discriminator, real_images, fake_images)
                 loss_G = loss.generator_loss(discriminator, fake_images, real_images)
+                sum_loss_D += loss_D.item()
+                sum_loss_G += loss_G.item()
+        loss_D = sum_loss_D / len(test_dataloader)
+        loss_G = sum_loss_G / len(test_dataloader)
 
         t = time.time() - start_time
-        content = f'Test: ' f'Epoch [{epoch+1}/{epochs}], 'f'Loss_D: {loss_D.item()}, Loss_G: {loss_G.item()}\n\n'
+        content = f'Test: ' f'Epoch [{epoch+1}/{epochs}], 'f'Average Loss_D: {loss_D.item()}, Average Loss_G: {loss_G.item()}\n'
+        content += "--------------------------------------------\n"
         print(content)
         with open('snapshot/log.txt', 'a') as f:
             f.write(content + '\n')
