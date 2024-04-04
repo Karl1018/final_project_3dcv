@@ -20,10 +20,6 @@ elif torch.cuda.is_available():
 else:
     device = torch.device("cpu")
 
-
-
-setup_seed(17)
-
 generator = network.Generator().to(device)
 discriminator = network.Discriminator().to(device)
 
