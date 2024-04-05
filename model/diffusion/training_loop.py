@@ -108,14 +108,14 @@ def train(train_dataloader, test_dataloader, resume, epochs, interval):
 
 
             # Logging
-            if i % interval == 0:
+            if i % interval == 0 and i != 0:
                 t = time.time() - start_time
                 content = f'Time: {int(t//3600)}h {int(t%3600//60)}m, ' f'Epoch [{epoch+1}/{epochs}], 'f'Loss: {loss}'
                 print(content)
                 with open('snapshot/log.txt', 'a') as f:
                     f.write(content + '\n')
                 
-            if i % interval == 0:
+            if i % interval == 0 and i != 0:
                 # Save generated images
                 l_channel = l_channel.to(device).unsqueeze(1) 
                 outputs_lab = torch.cat((l_channel, outputs), dim=1)  # Combine L and ab channels
