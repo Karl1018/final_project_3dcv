@@ -72,7 +72,6 @@ def train(train_dataloader, test_dataloader, resume, epochs, interval):
     sample = next(iter(train_dataloader))
     real_image = sample[0].to(device)
     grayscale_image = TF.rgb_to_grayscale(real_image)
-    print(grayscale_image.shape)
     fake_image = generator(grayscale_image)
 
     TF.to_pil_image(fake_image.cpu()[0]).save(f'snapshot/generated_0.png')
@@ -111,14 +110,14 @@ def train(train_dataloader, test_dataloader, resume, epochs, interval):
             sum_loss_G += loss_G.item()
             
             # Logging
-            if i % interval == 0:
+            if i % interval == 0 and i != 0:
                 t = time.time() - start_time
                 content = f'Time: {int(t//3600)}h {int(t%3600//60)}m, ' f'Epoch [{epoch+1}/{epochs}], 'f'Loss_D: {loss_D.item()}, Loss_G: {loss_G.item()}'
                 print(content)
                 with open('snapshot/log.txt', 'a') as f:
                     f.write(content + '\n')
                 
-            if i % interval == 0:
+            if i % interval == 0 and i != 0:
                 # Save generated images
                 TF.to_pil_image(postprocess(fake_images[0]).cpu()).save(f'snapshot/train/generated_{epoch+1}.png')
                 TF.to_pil_image(postprocess(real_images[0]).cpu()).save(f'snapshot/train/real_{epoch+1}.png')
@@ -148,16 +147,16 @@ def train(train_dataloader, test_dataloader, resume, epochs, interval):
         loss_G = sum_loss_G / len(test_dataloader)
 
         t = time.time() - start_time
-        content = f'Test: ' f'Epoch [{epoch+1}/{epochs}], 'f'Average Loss_D: {loss_D.item()}, Average Loss_G: {loss_G.item()}\n'
+        content = f'Test: ' f'Epoch [{epoch+1}/{epochs}], 'f'Average Loss_D: {loss_D}, Average Loss_G: {loss_G}\n'
         content += "--------------------------------------------\n"
         print(content)
         with open('snapshot/log.txt', 'a') as f:
             f.write(content + '\n')
         
         # Save generated images
-        TF.to_pil_image(postprocess(fake_images[0]).cpu()).save(f'snapshot/test/generated_{epoch}.png')
-        TF.to_pil_image(postprocess(real_images[0]).cpu()).save(f'snapshot/test/real_{epoch}.png')
-        TF.to_pil_image(postprocess(grayscale_images[0]).cpu()).save(f'snapshot/test/grayscale_{epoch}.png')
+        TF.to_pil_image(postprocess(fake_images[0]).cpu()).save(f'snapshot/test/generated_{epoch+1}.png')
+        TF.to_pil_image(postprocess(real_images[0]).cpu()).save(f'snapshot/test/real_{epoch+1}.png')
+        TF.to_pil_image(postprocess(grayscale_images[0]).cpu()).save(f'snapshot/test/grayscale_{epoch+1}.png')
 
         # save model state every epoch
         generator_state = generator.state_dict()
