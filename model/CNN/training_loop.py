@@ -6,13 +6,11 @@ from skimage.color import lab2rgb
 from skimage import color
 import tqdm
 import os
-import sys
 import time
 
-import network
-import loss
+import model.CNN.network as network
+import model.CNN.loss as loss
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from utils.image_process import postprocess  
 
 if torch.backends.mps.is_available():
@@ -157,9 +155,9 @@ def train(train_dataloader, test_dataloader, resume, epochs, interval):
                 print_tensor_stats((outputs), "Model RGB Outputs")
 
                 # save sample image
-                TF.to_pil_image(postprocess(outputs[0]).cpu()).save(f'snapshot/train/generated_{epoch}_{i}.png')
-                TF.to_pil_image(postprocess(real_images[0]).cpu()).save(f'snapshot/train/real_{epoch}_{i}.png')
-                TF.to_pil_image(postprocess(grayscale_images[0]).cpu()).save(f'snapshot/train/grayscale_{epoch}_{i}.png')
+                TF.to_pil_image(postprocess(outputs[0]).cpu()).save(f'snapshot/train/generated_{epoch+1}.png')
+                TF.to_pil_image(postprocess(real_images[0]).cpu()).save(f'snapshot/train/real_{epoch+1}.png')
+                TF.to_pil_image(postprocess(grayscale_images[0]).cpu()).save(f'snapshot/train/grayscale_{epoch+1}.png')
         
         # Test
         test_dataloader = tqdm.tqdm(test_dataloader)
@@ -186,9 +184,9 @@ def train(train_dataloader, test_dataloader, resume, epochs, interval):
         outputs = merge_l_ab(l_channel[:, :1, :, :], outputs_ab)  # Use only the first channel for L
             
         # save sample image
-        TF.to_pil_image(postprocess(outputs[0]).cpu()).save(f'snapshot/test/generated_{epoch}_{i}.png')
-        TF.to_pil_image(postprocess(real_images[0]).cpu()).save(f'snapshot/test/real_{epoch}_{i}.png')
-        TF.to_pil_image(postprocess(grayscale_images[0]).cpu()).save(f'snapshot/test/grayscale_{epoch}_{i}.png')
+        TF.to_pil_image(postprocess(outputs[0]).cpu()).save(f'snapshot/test/generated_{epoch+1}.png')
+        TF.to_pil_image(postprocess(real_images[0]).cpu()).save(f'snapshot/test/real_{epoch+1}.png')
+        TF.to_pil_image(postprocess(grayscale_images[0]).cpu()).save(f'snapshot/test/grayscale_{epoch+1}.png')
             
         avg_loss = running_loss / len(train_dataloader)
         print(f'Epoch [{epoch+1}/{epochs}], Average Loss: {avg_loss:.4f}')
