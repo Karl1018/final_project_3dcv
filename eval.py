@@ -41,8 +41,8 @@ def load_model(model_path, model_type):
     
     # upload model
     if model_type == 'cnn':
-        from model.CNN import network_2
-        model = network_2.ColorizationNet()
+        from model.CNN import network
+        model = network.ColorizationNet()
         model.load_state_dict(checkpoint)
     elif model_type == 'gan':
         from model.GAN import network
