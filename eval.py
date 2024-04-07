@@ -1,25 +1,71 @@
 import torch
 import lpips
+import tqdm
+import torchvision.transforms.functional as TF
+import os
+import sys
+
+from pathlib import Path
 from skimage import io
 from skimage.metrics import peak_signal_noise_ratio as compare_psnr
 from skimage.metrics import structural_similarity as compare_ssim
 from torchvision import transforms
 from PIL import Image
 
-def load_model(model_path):
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+from model.CNN.training_loop import merge_l_ab  
+from utils.image_process import postprocess  
+
+def load_model(model_path, model_type):
+    """
+    Load the model.
+    
+    parameter:
+        model_path: the path of trained model,
+        model_type: the model using to evaluate
+    return:
+        model
+    """
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
+
     try:
-        checkpoint = torch.load(model_path)
+        checkpoint = torch.load(model_path, map_location=device)
     except FileNotFoundError:
         print('Invalid checkpoint path')
         exit(1)
-    # TODO: Change the model architecture
-    from model.GAN import network
-    generator = network.Generator()
-    discriminator = network.Discriminator()
-    generator.load_state_dict(checkpoint['generator'])
-    return generator
+    
+    # upload model
+    if model_type == 'cnn':
+        from model.CNN import network_2
+        model = network_2.ColorizationNet()
+        model.load_state_dict(checkpoint)
+    elif model_type == 'gan':
+        from model.GAN import network
+        model = network.Generator()
+        model.load_state_dict(checkpoint)
+    # elif model_type == 'diffusion':
+    #     from model.Diffusion import network
+    #     model = network.DiffusionModel()
+    #     model.load_state_dict(checkpoint)
+    
+    model = model.to(device)
+    model.eval()
+    return model
 
 def load_image(image_path, resize_to=(256, 256)):
+    """
+    Load the image and resize.
+    
+    parameter:
+        image_path
+    return:
+        image
+    """
     transform = transforms.Compose([
         transforms.Resize(resize_to),
         transforms.ToTensor(),
@@ -29,6 +75,17 @@ def load_image(image_path, resize_to=(256, 256)):
     return image
 
 def evaluate(colorized_image_path, original_image_path):
+    """
+    Evaluate the score of generated images from our model.
+    
+    parameter:
+        colorized_image_path: the path of generated images,
+        original_image_path: the path of real images,
+    return:
+        LPIPS score
+        PSNR score
+        SSIM score
+    """
     # Load LPIPS model for perceptual similarity
     lpips_model = lpips.LPIPS(net='alex')
 
@@ -44,30 +101,121 @@ def evaluate(colorized_image_path, original_image_path):
 
     # Calculate LPIPS
     lpips_score = lpips_model(colorized_image, original_image)
-    print(f"LPIPS: {lpips_score.item()}")
+    # print(f"LPIPS: {lpips_score.item()}")
 
     # Move tensors to CPU and convert for PSNR and SSIM
     colorized_image_np = colorized_image.squeeze().cpu().permute(1, 2, 0).numpy()
     original_image_np = original_image.squeeze().cpu().permute(1, 2, 0).numpy()
 
     # Calculate PSNR
-    psnr = compare_psnr(original_image_np, colorized_image_np, data_range=1)
-    print(f"PSNR: {psnr}")
-
-    print(f'Colorized Image Shape: {colorized_image_np.shape}')
-    print(f'Original Image Shape: {original_image_np.shape}')
-    print(f'Color Image dtype: {colorized_image_np.dtype}')
-    print(f'Origin Image dtype: {original_image_np.dtype}')
-    print(f'Min pixel value of C: {colorized_image_np.min()}')
-    print(f'Max pixel value of C: {colorized_image_np.max()}')
-    print(f'Min pixel value of O: {original_image_np.min()}')
-    print(f'Max pixel value of O: {original_image_np.max()}')
+    psnr_score = compare_psnr(original_image_np, colorized_image_np, data_range=1)
+    # print(f"PSNR: {psnr_score}")
 
     # Calculate SSIM
-    ssim = compare_ssim(original_image_np, colorized_image_np, multichannel=True, data_range=1.0, channel_axis=2)
-    print(f"SSIM: {ssim}")
+    ssim_score = compare_ssim(original_image_np, colorized_image_np, multichannel=True, data_range=1.0, channel_axis=2)
+    # print(f"SSIM: {ssim_score}")
+
+    return lpips_score, psnr_score, ssim_score
+
+def evaluate_folder(images_folder, model_type):
+    """
+    Evaluate the score of generated images from our model.
+    
+    parameter:
+        images_folder,
+        model_type: model using to evaluate
+    """
+    folder_path = Path(images_folder)
+
+    generated_images = sorted(folder_path.glob('generated_*.png'))
+
+    # initial all score
+    total_lpips = 0.0
+    total_psnr = 0.0
+    total_ssim = 0.0
+    count = 0
+
+    for generated_image_path in generated_images:
+        # Extract epoch and i from the generated image filename for matching real images
+        suffix = generated_image_path.name.split('generated_')[-1]
+        real_image_path = folder_path / f'real_{suffix}'
+        
+        if real_image_path.exists():
+            lpips_score, psnr_score, ssim_score = evaluate(str(generated_image_path), str(real_image_path))
+            lpips_score = lpips_score.detach().item()
+            # print(lpips_score)
+            # print(psnr_score)
+            # print(ssim_score)
+            total_lpips += lpips_score
+            total_psnr += psnr_score
+            total_ssim += ssim_score
+            count += 1
+        else:
+            print(f"Missing real image for {generated_image_path}")
+
+    if count > 0:
+        avg_lpips = total_lpips / count
+        avg_psnr = total_psnr / count
+        avg_ssim = total_ssim / count
+        print(f"Evaluation score of {model_type}")
+        print(f"Average LPIPS: {avg_lpips}")
+        print(f"Average PSNR: {avg_psnr}")
+        print(f"Average SSIM: {avg_ssim}")
+    else:
+        print("No valid image pairs found for evaluation.")
 
 if __name__ == "__main__":
-    colorized_image_path = 'origin.jpg'  # Update this path
-    original_image_path = 'reconstruction.jpg'  # Update this path
-    evaluate(colorized_image_path, original_image_path)
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
+    
+    transform_to_tensor = transforms.Compose([
+        transforms.ToTensor(),
+    ])
+
+    # load model and test dataset
+    # 这里改成自己的checkpoint
+    model = load_model(model_path= r'D:\23ws\CV\3dcv-final\final_project_3dcv\model\CNN\snapshot\checkpoint\checkpoint_20.pth', model_type='cnn')
+    # 改成dataset的位置，我没用dataloader因为不会用
+    test_dataset_folder_path = r'D:\23ws\CV\3dcv-final\final_project_3dcv\dataset_256\00005'
+    folder = Path(test_dataset_folder_path)
+    # print(folder)
+
+    # 用于eval的图片会存在eval文件夹里面，也可以自行修改路径
+    os.makedirs(r'eval', exist_ok=True)
+
+    i = 0
+    # gan和cnn的模型有些不一样，cnn的输出是ab通道，所以需要额外转换成rgb, gan的应该是直接生成rgb，所以需要自己改
+    # get the output from cnn
+    for img_path in folder.glob('*.png'):
+        # print(img_path)
+
+        # images = Image.open(img_path).convert('RGB')
+        images = Image.open(img_path)
+        images.save(f'eval/real_{i}.png')
+
+        real_images = transform_to_tensor(images).to(device)        
+        grayscale_images = TF.rgb_to_grayscale(real_images)
+        grayscale_images = (grayscale_images + 1.0) / 2.0
+        if grayscale_images.dim() == 3:
+            grayscale_images = grayscale_images.unsqueeze(0)
+            # print('get grayscale_images')
+            
+        with torch.no_grad():
+            outputs_ab = model(grayscale_images)
+        
+        # convert output_ab to rgb image
+        l_channel = grayscale_images.expand(-1, 3, -1, -1)  # Duplicate the grayscale channel to match LAB dimension
+        outputs = merge_l_ab(l_channel[:, :1, :, :], outputs_ab)  # Use only the first channel for L
+        # save sample image
+        TF.to_pil_image(postprocess(outputs[0]).cpu()).save(f'eval/generated_{i}.png')
+
+        i = i + 1
+    
+    # 这里改成存放用于evaluate的文件夹的路径，就可以进行计算了
+    images_folder_path = r'D:\23ws\CV\3dcv-final\final_project_3dcv\eval'
+    evaluate_folder(images_folder_path, model_type='cnn')
+            
