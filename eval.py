@@ -47,7 +47,7 @@ def load_model(model_path, model_type):
     elif model_type == 'gan':
         from model.GAN import network
         model = network.Generator()
-        model.load_state_dict(checkpoint)
+        model.load_state_dict(checkpoint['generator'])
     # elif model_type == 'diffusion':
     #     from model.Diffusion import network
     #     model = network.DiffusionModel()
@@ -164,31 +164,13 @@ def evaluate_folder(images_folder, model_type):
     else:
         print("No valid image pairs found for evaluation.")
 
-if __name__ == "__main__":
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-    elif torch.backends.mps.is_available():
-        device = torch.device("mps")
-    else:
-        device = torch.device("cpu")
+def get_score_from_CNN(test_dataset_folder_path):
     
-    transform_to_tensor = transforms.Compose([
-        transforms.ToTensor(),
-    ])
-
-    # load model and test dataset
-    # 这里改成自己的checkpoint
-    model = load_model(model_path= r'D:\23ws\CV\3dcv-final\final_project_3dcv\model\CNN\snapshot\checkpoint\checkpoint_20.pth', model_type='cnn')
-    # 改成dataset的位置，我没用dataloader因为不会用
-    test_dataset_folder_path = r'D:\23ws\CV\3dcv-final\final_project_3dcv\dataset_256\00005'
+    model = load_model(model_path= r'D:\23ws\CV\3dcv-final\final_project_3dcv\experimental results\CNN1\checkpoint\checkpoint_20.pth', model_type='cnn')
     folder = Path(test_dataset_folder_path)
-    # print(folder)
-
-    # 用于eval的图片会存在eval文件夹里面，也可以自行修改路径
     os.makedirs(r'eval', exist_ok=True)
 
     i = 0
-    # gan和cnn的模型有些不一样，cnn的输出是ab通道，所以需要额外转换成rgb, gan的应该是直接生成rgb，所以需要自己改
     # get the output from cnn
     for img_path in folder.glob('*.png'):
         # print(img_path)
@@ -215,7 +197,56 @@ if __name__ == "__main__":
 
         i = i + 1
     
-    # 这里改成存放用于evaluate的文件夹的路径，就可以进行计算了
     images_folder_path = r'D:\23ws\CV\3dcv-final\final_project_3dcv\eval'
     evaluate_folder(images_folder_path, model_type='cnn')
+
+def get_score_from_GAN(test_dataset_folder_path):
+    
+    model = load_model(model_path= r'D:\23ws\CV\3dcv-final\final_project_3dcv\experimental results\GAN2\checkpoint\checkpoint_20.pth', model_type='gan')
+    folder = Path(test_dataset_folder_path)
+    os.makedirs(r'eval', exist_ok=True)
+    
+    i = 0
+    # get the output from cnn
+    for img_path in folder.glob('*.png'):
+        # print(img_path)
+
+        # images = Image.open(img_path).convert('RGB')
+        images = Image.open(img_path)
+        images.save(f'eval/real_{i}.png')
+
+        real_images = transform_to_tensor(images).to(device)        
+        grayscale_images = TF.rgb_to_grayscale(real_images)
+        if grayscale_images.dim() == 3:
+            grayscale_images = grayscale_images.unsqueeze(0)
+            # print('get grayscale_images')
+            
+        with torch.no_grad():
+            generated_image = model(grayscale_images)
+        
+        # save sample image
+        TF.to_pil_image(postprocess(generated_image[0]).cpu()).save(f'eval/generated_{i}.png')
+
+        i = i + 1
+    
+    images_folder_path = r'D:\23ws\CV\3dcv-final\final_project_3dcv\eval'
+    evaluate_folder(images_folder_path, model_type='gan')
+
+if __name__ == "__main__":
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
+    
+    transform_to_tensor = transforms.Compose([
+        transforms.ToTensor(),
+    ])
+    
+    # test dataset
+    test_dataset_folder_path = r'D:\23ws\CV\3dcv-final\final_project_3dcv\dataset\validation\00000'
+
+    get_score_from_CNN(test_dataset_folder_path)
+    get_score_from_GAN(test_dataset_folder_path)
             
