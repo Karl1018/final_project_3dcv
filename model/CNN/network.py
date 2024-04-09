@@ -1,33 +1,46 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+from torchvision import models
+from torchvision.models import resnet18, ResNet18_Weights
 
 class ColorizationNet(nn.Module):
-    def __init__(self):
+    def __init__(self, input_size=128):
         super(ColorizationNet, self).__init__()
+        MIDLEVEL_FEATURE_SIZE = 128
 
-        # Encoder
-        self.conv1 = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1)
-        self.conv2 = nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1)
-        self.conv3 = nn.Conv2d(128, 256, kernel_size=3, stride=2, padding=1)
-        self.conv4 = nn.Conv2d(256, 512, kernel_size=3, stride=2, padding=1)
+        # First half: ResNet
+        # resnet = models.resnet18(pretrained=True)
+        resnet = models.resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
         
-        # Decoder
-        self.deconv1 = nn.ConvTranspose2d(512, 256, kernel_size=3, stride=2, padding=1, output_padding=1)
-        self.deconv2 = nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1, output_padding=1)
-        self.deconv3 = nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1)
-        self.deconv4 = nn.Conv2d(64, 2, kernel_size=3, stride=1, padding=1)
-    
-    def forward(self, x):
-        # Encoder
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
-        x = F.relu(self.conv3(x))
-        x = F.relu(self.conv4(x))
-        
-        # Decoder
-        x = F.relu(self.deconv1(x))
-        x = F.relu(self.deconv2(x))
-        x = F.relu(self.deconv3(x))
-        x = torch.sigmoid(self.deconv4(x)) 
-        return x
+        # Change first conv layer to accept single-channel (grayscale) input
+        resnet.conv1.weight = nn.Parameter(resnet.conv1.weight.sum(dim=1).unsqueeze(1))
+        # Extract midlevel features from ResNet-gray
+        self.midlevel_resnet = nn.Sequential(*list(resnet.children())[0:6])
+
+        # Second half: Upsampling
+        self.upsample = nn.Sequential(
+            nn.Conv2d(MIDLEVEL_FEATURE_SIZE, 128, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.Upsample(scale_factor=2),
+            nn.Conv2d(128, 64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.Upsample(scale_factor=2),
+            nn.Conv2d(64, 32, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.Conv2d(32, 2, kernel_size=3, stride=1, padding=1),
+            nn.Upsample(scale_factor=2)
+        )
+
+    def forward(self, input):
+        # Pass input through ResNet-gray to extract features
+        midlevel_features = self.midlevel_resnet(input)
+
+        # Upsample to get colors
+        output = self.upsample(midlevel_features)
+        return output

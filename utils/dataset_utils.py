@@ -34,7 +34,7 @@ def make_custom_dataloader(path, batch_size, num_workers=4, aug=False):
         train_dataset.dataset.transform = basic_transform
     test_dataset.dataset.transform = basic_transform
     
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     
     return train_dataloader, test_dataloader
