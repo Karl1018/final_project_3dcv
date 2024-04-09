@@ -11,7 +11,7 @@ from skimage.metrics import peak_signal_noise_ratio as compare_psnr
 from skimage.metrics import structural_similarity as compare_ssim
 from torchvision import transforms
 from PIL import Image
-
+from utils.image_process import lab_to_rgb
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from model.CNN.training_loop import merge_l_ab  
 from utils.image_process import postprocess  
@@ -207,7 +207,7 @@ def get_score_from_GAN(test_dataset_folder_path):
     os.makedirs(r'eval', exist_ok=True)
     
     i = 0
-    # get the output from cnn
+    # get the output from gan
     for img_path in folder.glob('*.png'):
         # print(img_path)
 
@@ -232,6 +232,36 @@ def get_score_from_GAN(test_dataset_folder_path):
     images_folder_path = r'D:\23ws\CV\3dcv-final\final_project_3dcv\eval'
     evaluate_folder(images_folder_path, model_type='gan')
 
+def get_score_from_diffusion(test_dataset_folder_path):
+    model = load_model(model_path= r'', model_type='diffusion')
+    folder = Path(test_dataset_folder_path)
+    os.makedirs(r'', exist_ok=True)
+    i = 0
+    # get the output from diffusion
+    for img_path in folder.glob('*.png'):
+        # print(img_path)
+
+        # images = Image.open(img_path).convert('RGB')
+        images = Image.open(img_path)
+        images.save(f'eval/real_{i}.png')
+
+        real_images = transform_to_tensor(images).to(device)        
+        grayscale_images = TF.rgb_to_grayscale(real_images)
+        if grayscale_images.dim() == 3:
+            grayscale_images = grayscale_images.unsqueeze(0)
+            # print('get grayscale_images')
+        l_channel = grayscale_images[:, :1, :, :].unsqueeze(1)
+        with torch.no_grad():
+            generated_ab = model.reverse_diffusion(grayscale_images)
+        generated_image = torch.cat((l_channel, generated_ab), dim=1)
+        generated_image = lab_to_rgb(generated_image)   
+        # save sample image
+        TF.to_pil_image(postprocess(generated_image[0]).cpu()).save(f'eval/generated_{i}.png')
+
+        i = i + 1
+    
+    images_folder_path = r'D:\23ws\CV\3dcv-final\final_project_3dcv\eval'
+    evaluate_folder(images_folder_path, model_type='diffusion')
 if __name__ == "__main__":
     if torch.cuda.is_available():
         device = torch.device("cuda")
