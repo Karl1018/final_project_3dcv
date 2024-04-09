@@ -1,30 +1,37 @@
 import torch
 import torch.nn as nn
 from . import network
+from utils.image_process import lab_to_rgb, denormalize_lab
+import torchvision.transforms.functional as TF
 
 class GaussianDiffusion(nn.Module):
     def __init__(self, denoise_model, betas):
         super(GaussianDiffusion, self).__init__()
         self.denoise_model = denoise_model
         self.betas = betas
-        self.alphas = 1 - betas
-        self.alphas_bar = torch.cumprod(self.alphas, dim=0)
-        self.noise_scale_factors = torch.sqrt(
-            self.betas[1:] / self.alphas_bar[:-1]
-        )
+        self.alphas_bar = [torch.tensor([1.]) for _ in range(len(betas))]
 
     def noise_generation(self, x, t):
-        beta_t = self.betas.to(x.device)[t]
-        alpha_bar_prev_t = torch.cat([torch.tensor([1.]).to(x.device), self.alphas_bar[:-1].to(x.device)])[t]
-        noise = torch.randn_like(x) * torch.sqrt(beta_t / alpha_bar_prev_t)
+        beta_t = self.betas[t].to(x.device)
+        alpha_bar_prev_t = torch.tensor([1.]).to(x.device) if t == 0 else self.alphas_bar[t-1].to(x.device)
+        noise_scale = torch.sqrt(beta_t / alpha_bar_prev_t)
+        noise = torch.randn_like(x) * noise_scale
         return noise
 
-    def forward(self, x):
-        t = torch.randint(len(self.betas), size=(1,)).to(x.device) # select timestep t
-        noise = self.noise_generation(x, t)
-        x_noisy = x + noise
+
+    def forward(self, x_ab, x_l):
+        t = torch.randint(len(self.betas), size=(1,)).to(x_ab.device) # select timestep t
+        noise = self.noise_generation(x_ab, t)
+        x_noisy = torch.cat((x_l.unsqueeze(1), x_ab + noise), dim=1)
         x_recon = self.denoise_model(x_noisy)
         return x_recon
+    
+    def reverse_diffusion(self, x):
+        l_channel = x[:, 0, :, :].unsqueeze(1).to(x.device)
+        ab_channel = torch.zeros((l_channel.shape[0], 2, l_channel.shape[2], l_channel.shape[3])).to(x.device)
+        x = torch.cat((l_channel, ab_channel), dim=1)
+        return self.denoise_model(x)
+    
 
 def test():
     device = torch.device("mps")

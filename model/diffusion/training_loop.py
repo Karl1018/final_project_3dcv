@@ -10,7 +10,7 @@ import torchvision.transforms.functional as TF
 from model.diffusion.network import UNet
 from model.diffusion.diffusion import GaussianDiffusion
 from utils.dataset_utils import make_custom_dataloader
-from utils.image_process import rgb_to_lab, lab_to_rgb, denormalize_lab
+from utils.image_process import rgb_to_lab, lab_to_rgb, postprocess
 
 import warnings
 warnings.filterwarnings('ignore', category=UserWarning)
@@ -28,7 +28,7 @@ def train(train_dataloader, test_dataloader, resume, epochs, interval):
     # Load the denoising model (UNet)
     denoise_model = UNet().to(device)
     # Initialize the Gaussian Diffusion model
-    model = GaussianDiffusion(denoise_model, betas = torch.linspace(start=1e-4, end=2e-2, steps=1000)).to(device)
+    model = GaussianDiffusion(denoise_model, betas = torch.linspace(start=1e-4, end=2e-2, steps=1000, device=device)).to(device)
 
     if resume:
         try:
@@ -82,19 +82,17 @@ def train(train_dataloader, test_dataloader, resume, epochs, interval):
             # Convert images to Lab and split the channels
             targets_ori = images.to(device)  # Real, colored images
   
-            targets = rgb_to_lab(targets_ori)
-            ab_channels = targets[:, 1:, :, :]  # ab channels as targets
-            l_channel = targets[:, 0, :, :]  
-            # Assume data is in the form (inputs, targets)
-            inputs = targets.to(device)
+            inputs = rgb_to_lab(targets_ori).to(device)
+            ab_channels = inputs[:, 1:, :, :].to(device) 
+            l_channel = inputs[:, 0, :, :].to(device)    
+           
             # Clear the gradients
             optimizer.zero_grad()
 
             # Forward propagation
-            outputs = model(inputs)
+            outputs = model(ab_channels, l_channel)
 
             outputs = outputs.to(device)
-            ab_channels = ab_channels.to(device)
 
             # Calculate the loss
             loss = criterion(outputs, ab_channels)
@@ -117,31 +115,25 @@ def train(train_dataloader, test_dataloader, resume, epochs, interval):
                 
             if i % interval == 0 and i != 0:
                 # Save generated images
-                l_channel = l_channel.to(device).unsqueeze(1) 
+                l_channel = l_channel.unsqueeze(1) 
                 outputs_lab = torch.cat((l_channel, outputs), dim=1)  # Combine L and ab channels
 
-                outputs_lab = denormalize_lab(outputs_lab)
-                targets = denormalize_lab(targets)
-
                 outputs_lab = lab_to_rgb(outputs_lab)
-                targets = lab_to_rgb(targets)
-                
+        
                 TF.to_pil_image(outputs_lab[0]).save(f'snapshot/train/generated_{epoch+1}.png')
-                TF.to_pil_image(targets[0]).save(f'snapshot/train/real_{epoch+1}.png')
+                TF.to_pil_image(postprocess(targets_ori[0])).save(f'snapshot/train/real_{epoch+1}.png')
         # Test
         test_dataloader = tqdm.tqdm(test_dataloader)
         for i, (images, _) in enumerate(test_dataloader):
             test_dataloader.set_description(f'Testing Epoch [{epoch+1}/{epochs}]')
             targets_ori = images.to(device) 
-            targets = rgb_to_lab(targets_ori)
-            ab_channels = targets[:, 1:, :, :] 
-            l_channel = targets[:, 0, :, :]  
-            # Assume data is in the form (inputs, targets)
-            inputs = targets.to(device)
-            ab_channels = ab_channels.to(device)
+            inputs_test = rgb_to_lab(targets_ori)
+            ab_channels = inputs_test[:, 1:, :, :].to(device)
+            l_channel = inputs_test[:, 0, :, :].to(device)  
             with torch.no_grad():
-                outputs = model(inputs)
-                loss = criterion(outputs, ab_channels)
+                # Generate noisy versions for inference
+                output_test = model(ab_channels, l_channel) 
+                loss = criterion(output_test, ab_channels)
         
         content = f'Test: ' f'Epoch [{epoch+1}/{epochs}], 'f'Loss: {loss.item()}\n\n'
         print(content)
@@ -149,14 +141,12 @@ def train(train_dataloader, test_dataloader, resume, epochs, interval):
             f.write(content + '\n')
 
         # Save generated images
-        l_channel = l_channel.to(device).unsqueeze(1)
-        outputs_lab = torch.cat((l_channel, outputs), dim=1)
-        outputs_lab = denormalize_lab(outputs_lab)
-        targets = denormalize_lab(targets)
-        outputs_lab = lab_to_rgb(outputs_lab)
-        targets = lab_to_rgb(targets)
-        TF.to_pil_image(outputs_lab[0]).save(f'snapshot/test/generated_{epoch+1}.png')
-        TF.to_pil_image(targets[0]).save(f'snapshot/test/real_{epoch+1}.png')
+        l_channel = l_channel.unsqueeze(1)
+        outputs_lab = torch.cat((l_channel, output_test), dim=1)
+        outputs_rgb = lab_to_rgb(outputs_lab)
+ 
+        TF.to_pil_image(outputs_rgb[0]).save(f'snapshot/test/generated_{epoch+1}.png')
+        TF.to_pil_image(postprocess(targets_ori[0])).save(f'snapshot/test/real_{epoch+1}.png')
 
         checkpoint = {
         'denoise_model': denoise_model.state_dict(),
