@@ -9,15 +9,15 @@ class GaussianDiffusion(nn.Module):
         super(GaussianDiffusion, self).__init__()
         self.denoise_model = denoise_model
         self.betas = betas
-        self.alphas_bar = [torch.tensor([1.]) for _ in range(len(betas))]
+        self.alphas = 1 - betas
+        self.alphas_bar = torch.cumprod(self.alphas, dim=0)
+        self.noise_scale_factors = torch.sqrt(self.betas / (1 - self.alphas_bar))
 
     def noise_generation(self, x, t):
-        beta_t = self.betas[t].to(x.device)
-        alpha_bar_prev_t = torch.tensor([1.]).to(x.device) if t == 0 else self.alphas_bar[t-1].to(x.device)
-        noise_scale = torch.sqrt(beta_t / alpha_bar_prev_t)
-        noise = torch.randn_like(x) * noise_scale
+        noise = torch.randn_like(x, device=x.device)
+        noise_scale_factors = self.noise_scale_factors.to(x.device)
+        noise = noise * noise_scale_factors[t]
         return noise
-
 
     def forward(self, x_ab, x_l):
         t = torch.randint(len(self.betas), size=(1,)).to(x_ab.device) # select timestep t
@@ -28,9 +28,9 @@ class GaussianDiffusion(nn.Module):
     
     def reverse_diffusion(self, x):
         l_channel = x[:, 0, :, :].unsqueeze(1).to(x.device)
-        ab_channel = torch.zeros((l_channel.shape[0], 2, l_channel.shape[2], l_channel.shape[3])).to(x.device)
+        ab_channel = torch.randn((l_channel.shape[0], 2, l_channel.shape[2], l_channel.shape[3])).to(x.device)
         x = torch.cat((l_channel, ab_channel), dim=1)
-        return self.denoise_model(x)
+        return torch.cat((l_channel, self.denoise_model(x)), dim=1)
     
 
 def test():
