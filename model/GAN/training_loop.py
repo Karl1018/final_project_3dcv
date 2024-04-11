@@ -26,6 +26,8 @@ discriminator = network.Discriminator().to(device)
 # Hyperparameters
 lr = LR
 beta1 = BETA1
+lambda_L1 = LAMBDA_L1
+lambda_perceptual = LAMBDA_PERCEPTUAL
 
 # Optimizers
 optimizer_G = optim.Adam(generator.parameters(), lr=lr, betas=(beta1, 0.999))
@@ -102,7 +104,7 @@ def train(train_dataloader, test_dataloader, resume, epochs, interval):
             # Training the generator
             optimizer_G.zero_grad()
             fake_images = generator(grayscale_images)
-            loss_G = loss.generator_loss(discriminator, fake_images, real_images)
+            loss_G = loss.generator_loss(discriminator, fake_images, real_images, lambda_L1=lambda_L1, lambda_perceptual=lambda_perceptual)
             loss_G.backward()
             optimizer_G.step()
 
@@ -130,13 +132,14 @@ def train(train_dataloader, test_dataloader, resume, epochs, interval):
         with open('snapshot/log.txt', 'a') as f:
             f.write(content + '\n')
         # Test
+        sum_loss_D = 0
+        sum_loss_G = 0
         test_dataloader = tqdm.tqdm(test_dataloader)
         for i, (images, _) in enumerate(test_dataloader):
             test_dataloader.set_description(f'Testing Epoch [{epoch+1}/{epochs}]')
             real_images = images.to(device)
             grayscale_images = TF.rgb_to_grayscale(real_images)
-            sum_loss_D = 0
-            sum_loss_G = 0
+
             with torch.no_grad():
                 fake_images = generator(grayscale_images)
                 loss_D = loss.discriminator_loss(discriminator, real_images, fake_images)
