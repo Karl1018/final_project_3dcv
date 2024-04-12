@@ -26,11 +26,14 @@ class GaussianDiffusion(nn.Module):
         x_recon = self.denoise_model(x_noisy)
         return x_recon
     
-    def reverse_diffusion(self, x):
+    def reverse_diffusion(self, x, demo=False):
         l_channel = x[:, 0, :, :].unsqueeze(1).to(x.device)
         ab_channel = torch.randn((l_channel.shape[0], 2, l_channel.shape[2], l_channel.shape[3])).to(x.device)
         x = torch.cat((l_channel, ab_channel), dim=1)
-        return torch.cat((l_channel, self.denoise_model(x)), dim=1)
+        if demo:
+            return torch.cat((l_channel, self.denoise_model(x)), dim=1), x
+        else:
+            return torch.cat((l_channel, self.denoise_model(x)), dim=1)
     
 
 def test():

@@ -44,7 +44,7 @@ def train(train_dataloader, test_dataloader, resume, epochs, interval):
 
     # Set the loss function and optimizer
     criterion = nn.SmoothL1Loss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.002)
+    optimizer = torch.optim.Adam(denoise_model.parameters(), lr=0.002)
 
     # Print the training information
     print('Training using device:', device)
@@ -76,7 +76,7 @@ def train(train_dataloader, test_dataloader, resume, epochs, interval):
         
         # Initialize the running loss
         running_loss = 0.0
-
+        denoise_model.train()
         for i, (images, _) in enumerate(train_dataloader):
             train_dataloader.set_description(f'Epoch [{epoch+1}/{epochs}]')
             # Convert images to Lab and split the channels
@@ -123,6 +123,8 @@ def train(train_dataloader, test_dataloader, resume, epochs, interval):
                 TF.to_pil_image(outputs_lab[0]).save(f'snapshot/train/generated_{epoch+1}.png')
                 TF.to_pil_image(postprocess(targets_ori[0])).save(f'snapshot/train/real_{epoch+1}.png')
         # Test
+        running_loss = 0.0
+        denoise_model.eval()
         test_dataloader = tqdm.tqdm(test_dataloader)
         for i, (images, _) in enumerate(test_dataloader):
             test_dataloader.set_description(f'Testing Epoch [{epoch+1}/{epochs}]')
@@ -134,8 +136,9 @@ def train(train_dataloader, test_dataloader, resume, epochs, interval):
                 # Generate noisy versions for inference
                 output_test = model(ab_channels, l_channel) 
                 loss = criterion(output_test, ab_channels)
+                running_loss += loss.item()
         
-        content = f'Test: ' f'Epoch [{epoch+1}/{epochs}], 'f'Loss: {loss.item()}\n\n'
+        content = f'Test: ' f'Epoch [{epoch+1}/{epochs}], 'f'Loss: {running_loss/len(test_dataloader)}\n\n'
         print(content)
         with open('snapshot/log.txt', 'a') as f:
             f.write(content + '\n')

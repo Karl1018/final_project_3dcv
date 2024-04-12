@@ -86,6 +86,8 @@ def train(train_dataloader, test_dataloader, resume, epochs, interval):
         # Train
         sum_loss_D = 0
         sum_loss_G = 0
+        generator.train()
+        discriminator.train()
         train_dataloader = tqdm.tqdm(train_dataloader)
         for i, (images, _) in enumerate(train_dataloader):
             train_dataloader.set_description(f'Epoch [{epoch+1}/{epochs}]')
@@ -134,6 +136,8 @@ def train(train_dataloader, test_dataloader, resume, epochs, interval):
         # Test
         sum_loss_D = 0
         sum_loss_G = 0
+        generator.eval()
+        discriminator.eval()
         test_dataloader = tqdm.tqdm(test_dataloader)
         for i, (images, _) in enumerate(test_dataloader):
             test_dataloader.set_description(f'Testing Epoch [{epoch+1}/{epochs}]')
