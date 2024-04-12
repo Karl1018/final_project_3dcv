@@ -24,7 +24,7 @@ python train.py --help
 
 ## Demo
 
-The demo of our project is available in demo.ipynb.
+The demo of our project is available in [demo.ipynb](https://github.com/Karl1018/final_project_3dcv/blob/main/demo.ipynb).
 
 ## Dataset
 We use AFHQ cat dataset and use dataset_tool.py to compress the images to 256*256.
